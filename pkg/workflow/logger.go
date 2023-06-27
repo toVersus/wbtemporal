@@ -6,10 +6,10 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-func defaultWorkflowLogger(ctx workflow.Context, workspace *executor.WorkspaceOption) log.Logger {
+func defaultGoogleAPIWorkflowLogger(ctx workflow.Context, workspace *executor.WorkspaceOption) log.Logger {
 	return log.With(workflow.GetLogger(ctx),
-		"ProjectID", workspace.ProjectId,
+		"ProjectID", workspace.GoogleAPIOption.ProjectId,
 		"ClusterName", workspace.Name,
-		"ClusterLocation", workspace.Location,
+		"ClusterLocation", workspace.GoogleAPIOption.Location,
 	)
 }

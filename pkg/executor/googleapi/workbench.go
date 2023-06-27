@@ -32,7 +32,7 @@ func NewWorkbench(ctx context.Context) (executor.Executor, error) {
 
 func (w *workbench) CreateNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
 	req := &notebookspb.CreateInstanceRequest{
-		Parent:     fmt.Sprintf("projects/%s/locations/%s", option.ProjectId, option.Zone),
+		Parent:     fmt.Sprintf("projects/%s/locations/%s", option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone),
 		InstanceId: option.Name,
 		Instance: &notebookspb.Instance{
 			Environment: &notebookspb.Instance_VmImage{
@@ -48,10 +48,10 @@ func (w *workbench) CreateNotebookInstance(ctx context.Context, option *executor
 			BootDiskSizeGb: 50,
 			DataDiskType:   notebookspb.Instance_PD_BALANCED,
 			DataDiskSizeGb: 20,
-			Network:        fmt.Sprintf("projects/%s/global/networks/%s", option.ProjectId, option.Network),
-			Subnet:         fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", option.ProjectId, option.Location, option.Subnet),
+			Network:        fmt.Sprintf("projects/%s/global/networks/%s", option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Network),
+			Subnet:         fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Location, option.GoogleAPIOption.Subnet),
 			InstanceOwners: []string{option.Email},
-			MachineType:    option.MachineType,
+			MachineType:    option.GoogleAPIOption.MachineType,
 		},
 	}
 	op, err := w.notebookClient.CreateInstance(ctx, req)
@@ -61,9 +61,9 @@ func (w *workbench) CreateNotebookInstance(ctx context.Context, option *executor
 	return op.Name(), nil
 }
 
-func (w *workbench) DescribeNotebookInstance(ctx context.Context, projectID, zone, name string) (*executor.WorkspaceStatus, error) {
+func (w *workbench) DescribeNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (*executor.WorkspaceStatus, error) {
 	req := &notebookspb.GetInstanceRequest{
-		Name: notebookInstanceFullname(projectID, zone, name),
+		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
 	}
 	wb, err := w.notebookClient.GetInstance(ctx, req)
 	if err != nil {
@@ -76,9 +76,9 @@ func (w *workbench) DescribeNotebookInstance(ctx context.Context, projectID, zon
 	}, nil
 }
 
-func (w *workbench) StartNotebookInstance(ctx context.Context, projectID, zone, name string) (string, error) {
+func (w *workbench) StartNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
 	op, err := w.notebookClient.StartInstance(ctx, &notebookspb.StartInstanceRequest{
-		Name: notebookInstanceFullname(projectID, zone, name),
+		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
 	})
 	if err != nil {
 		return "", err
@@ -86,9 +86,9 @@ func (w *workbench) StartNotebookInstance(ctx context.Context, projectID, zone, 
 	return op.Name(), nil
 }
 
-func (w *workbench) StopNotebookInstance(ctx context.Context, projectID, zone, name string) (string, error) {
+func (w *workbench) StopNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
 	op, err := w.notebookClient.StopInstance(ctx, &notebookspb.StopInstanceRequest{
-		Name: notebookInstanceFullname(projectID, zone, name),
+		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
 	})
 	if err != nil {
 		return "", err
@@ -96,9 +96,9 @@ func (w *workbench) StopNotebookInstance(ctx context.Context, projectID, zone, n
 	return op.Name(), nil
 }
 
-func (w *workbench) DeleteNotebookInstance(ctx context.Context, projectID, zone, name string) (string, error) {
+func (w *workbench) DeleteNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
 	op, err := w.notebookClient.DeleteInstance(ctx, &notebookspb.DeleteInstanceRequest{
-		Name: notebookInstanceFullname(projectID, zone, name),
+		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
 	})
 	if err != nil {
 		return "", err

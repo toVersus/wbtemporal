@@ -18,7 +18,7 @@ type WorkspaceActvity struct {
 }
 
 func (w *WorkspaceActvity) Exist(ctx context.Context, option *executor.WorkspaceOption) (bool, error) {
-	_, err := w.Executor.DescribeNotebookInstance(ctx, option.ProjectId, option.Zone, option.Name)
+	_, err := w.Executor.DescribeNotebookInstance(ctx, option)
 	if err != nil {
 		if strings.Contains(err.Error(), "was not found") {
 			return false, nil
@@ -29,7 +29,7 @@ func (w *WorkspaceActvity) Exist(ctx context.Context, option *executor.Workspace
 }
 
 func (w *WorkspaceActvity) GetWorkspaceURL(ctx context.Context, option *executor.WorkspaceOption) (*executor.WorkspaceStatus, error) {
-	result, err := w.Executor.DescribeNotebookInstance(ctx, option.ProjectId, option.Zone, option.Name)
+	result, err := w.Executor.DescribeNotebookInstance(ctx, option)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (w *WorkspaceActvity) Create(ctx context.Context, option *executor.Workspac
 }
 
 func (w *WorkspaceActvity) Delete(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
-	opName, err := w.Executor.DeleteNotebookInstance(ctx, option.ProjectId, option.Zone, option.Name)
+	opName, err := w.Executor.DeleteNotebookInstance(ctx, option)
 	if err != nil {
 		return "", err
 	}
@@ -59,7 +59,7 @@ func (w *WorkspaceActvity) Delete(ctx context.Context, option *executor.Workspac
 }
 
 func (w *WorkspaceActvity) Start(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
-	opName, err := w.Executor.StartNotebookInstance(ctx, option.ProjectId, option.Zone, option.Name)
+	opName, err := w.Executor.StartNotebookInstance(ctx, option)
 	if err != nil {
 		return "", err
 	}
@@ -67,7 +67,7 @@ func (w *WorkspaceActvity) Start(ctx context.Context, option *executor.Workspace
 }
 
 func (w *WorkspaceActvity) Stop(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
-	opName, err := w.Executor.StopNotebookInstance(ctx, option.ProjectId, option.Zone, option.Name)
+	opName, err := w.Executor.StopNotebookInstance(ctx, option)
 	if err != nil {
 		return "", err
 	}

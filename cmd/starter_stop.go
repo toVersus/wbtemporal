@@ -42,10 +42,12 @@ func starterStop(cmd *cobra.Command, args []string) {
 	defer shutdown()
 
 	options := &executor.WorkspaceOption{
-		Name:      name,
-		Location:  location,
-		Zone:      zone,
-		ProjectId: projectID,
+		Name: name,
+		GoogleAPIOption: &executor.GoogleAPIOption{
+			Location:  location,
+			Zone:      zone,
+			ProjectId: projectID,
+		},
 	}
 	workflowID := fmt.Sprintf("%s-stop", name)
 	logger.Info("Trigger workflow to stop workspace instance")

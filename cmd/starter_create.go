@@ -42,14 +42,16 @@ func starterCreate(cmd *cobra.Command, args []string) {
 	defer shutdown()
 
 	options := &executor.WorkspaceOption{
-		Name:        name,
-		Location:    location,
-		Zone:        zone,
-		ProjectId:   projectID,
-		Email:       email,
-		MachineType: machineType,
-		Network:     network,
-		Subnet:      subnet,
+		Name:  name,
+		Email: email,
+		GoogleAPIOption: &executor.GoogleAPIOption{
+			Location:    location,
+			Zone:        zone,
+			ProjectId:   projectID,
+			MachineType: machineType,
+			Network:     network,
+			Subnet:      subnet,
+		},
 	}
 	workflowID := fmt.Sprintf("%s-create", name)
 	logger.Info("Trigger workflow to create new workspace instance")

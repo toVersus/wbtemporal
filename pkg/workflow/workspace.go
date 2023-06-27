@@ -20,7 +20,7 @@ const (
 func CreateWorkspace(ctx workflow.Context, option *executor.WorkspaceOption) (*executor.WorkspaceStatus, error) {
 	var wa *activity.WorkspaceActvity
 
-	logger := defaultWorkflowLogger(ctx, option)
+	logger := defaultGoogleAPIWorkflowLogger(ctx, option)
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		// アクティビティの実行時間のタイムアウト値
@@ -69,7 +69,7 @@ func CreateWorkspace(ctx workflow.Context, option *executor.WorkspaceOption) (*e
 func DeleteWorkspace(ctx workflow.Context, option *executor.WorkspaceOption) error {
 	var wa *activity.WorkspaceActvity
 
-	logger := defaultWorkflowLogger(ctx, option)
+	logger := defaultGoogleAPIWorkflowLogger(ctx, option)
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		// アクティビティの実行時間のタイムアウト値
@@ -112,7 +112,7 @@ func DeleteWorkspace(ctx workflow.Context, option *executor.WorkspaceOption) err
 func StartWorkspace(ctx workflow.Context, option *executor.WorkspaceOption) (*executor.WorkspaceStatus, error) {
 	var wa *activity.WorkspaceActvity
 
-	logger := defaultWorkflowLogger(ctx, option)
+	logger := defaultGoogleAPIWorkflowLogger(ctx, option)
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		// アクティビティの実行時間のタイムアウト値
@@ -157,7 +157,7 @@ func StartWorkspace(ctx workflow.Context, option *executor.WorkspaceOption) (*ex
 func StopWorkspace(ctx workflow.Context, option *executor.WorkspaceOption) error {
 	var wa *activity.WorkspaceActvity
 
-	logger := defaultWorkflowLogger(ctx, option)
+	logger := defaultGoogleAPIWorkflowLogger(ctx, option)
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		// アクティビティの実行時間のタイムアウト値

@@ -19,6 +19,12 @@ type WorkspaceOption struct {
 	Name string
 	// Email indicates the workspace owner email
 	Email string
+
+	// GoogleAPIOption indicates the Google Cloud API option
+	GoogleAPIOption *GoogleAPIOption
+}
+
+type GoogleAPIOption struct {
 	// Region indicates the network region
 	Zone string
 	// Location indicates the workspace location or zone
@@ -45,10 +51,10 @@ type WorkspaceStatus struct {
 // NotebookService is an interface for interacting with Google Cloud Notebooks API
 type NotebookService interface {
 	CreateNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
-	DescribeNotebookInstance(ctx context.Context, projectID, zone, name string) (*WorkspaceStatus, error)
-	StartNotebookInstance(ctx context.Context, projectID, zone, name string) (string, error)
-	StopNotebookInstance(ctx context.Context, projectID, zone, name string) (string, error)
-	DeleteNotebookInstance(ctx context.Context, projectID, zone, name string) (string, error)
+	DescribeNotebookInstance(ctx context.Context, option *WorkspaceOption) (*WorkspaceStatus, error)
+	StartNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
+	StopNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
+	DeleteNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
 }
 
 type LongRunningOperationService interface {

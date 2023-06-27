@@ -42,10 +42,12 @@ func starterDelete(cmd *cobra.Command, args []string) {
 	defer shutdown()
 
 	options := &executor.WorkspaceOption{
-		Name:      name,
-		Location:  location,
-		Zone:      zone,
-		ProjectId: projectID,
+		Name: name,
+		GoogleAPIOption: &executor.GoogleAPIOption{
+			Location:  location,
+			Zone:      zone,
+			ProjectId: projectID,
+		},
 	}
 	workflowID := fmt.Sprintf("%s-delete", name)
 	logger.Info("Trigger workflow to delete workspace instance")
