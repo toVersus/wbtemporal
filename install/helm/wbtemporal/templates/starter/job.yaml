@@ -1,0 +1,48 @@
+{{- if .Values.starter.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "wbtemporal.fullname" . }}
+  labels:
+    {{- include "wbtemporal.starter.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "wbtemporal.starter.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.starter.podSecurityContext | nindent 8 }}
+      restartPolicy: OnFailure
+      containers:
+        - name: {{ .Chart.Name }}-starter
+          securityContext:
+            {{- toYaml .Values.starter.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - starter
+          - create
+          - --frontend-addr
+          - "{{ .Values.frontendAddr }}"
+          - --name
+          - "{{ .Values.workspaceName }}"
+          - --wait
+          resources:
+            {{- toYaml .Values.starter.resources | nindent 12 }}
+      {{- with .Values.starter.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.starter.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.starter.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    backoffLimit: 4
+{{- end }}

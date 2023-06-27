@@ -1,0 +1,5 @@
+frontendAddr: temporal-frontend-headless.temporal.svc.cluster.local.:7233
+workspaceName: sample
+
+starter:
+  enabled: true

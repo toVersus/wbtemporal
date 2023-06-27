@@ -1,0 +1,13 @@
+run:
+  timeout: 5m
+
+issues:
+  max-same-issues: 0
+
+linters:
+  disable-all: true
+  enable:
+  - ineffassign
+  - staticcheck
+  - unused
+  - gofmt

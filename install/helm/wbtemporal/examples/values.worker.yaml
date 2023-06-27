@@ -1,0 +1,8 @@
+frontendAddr: temporal-frontend-headless.temporal.svc.cluster.local.:7233
+
+worker:
+  enabled: true
+
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: "sample-wbtemporal@gcp-sample.iam.gserviceaccount.com"
