@@ -7,12 +7,10 @@ import (
 	"sync"
 	"time"
 
-	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"github.com/toVersus/wbtemporal/pkg/activity"
 	"github.com/toVersus/wbtemporal/pkg/logger"
 	"github.com/toVersus/wbtemporal/pkg/workflow"
-	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	"go.temporal.io/sdk/client"
 	sdktally "go.temporal.io/sdk/contrib/tally"
@@ -20,21 +18,21 @@ import (
 )
 
 var (
-	workerRunCmd = &cobra.Command{
+	workerWorkbenchRunCmd = &cobra.Command{
 		Use:   "run",
-		Short: "Run Temporal worker to upgrade GKE cluster and node pools",
-		Run:   workerRun,
+		Short: "Run Temporal worker to Vertex AI Workbench instances",
+		Run:   workerWorkbenchRun,
 	}
 )
 
-func workerRun(cmd *cobra.Command, args []string) {
+func workerWorkbenchRun(cmd *cobra.Command, args []string) {
 	// Pass to shared google client used by activity worker
 	ctx := context.Background()
 	logger := logger.NewDefaultLogger(logLevel)
 
 	opts := ExecutorOpts{Name: executorName}
 	logger.Info(fmt.Sprintf("executor option: %+v", opts))
-	executor, err := NewExecutor(ctx, opts)
+	executor, err := NewGoogleAPIExecutor(ctx, opts)
 	if err != nil {
 		logger.Fatal("Failed to select executor: %s", err)
 	}
@@ -54,36 +52,36 @@ func workerRun(cmd *cobra.Command, args []string) {
 	defer c.Close()
 	logger.Info(fmt.Sprintf("Successfully connected to temporal frontend: %s", frontendAddr))
 
-	wa := &activity.WorkspaceActvity{
+	wa := &activity.WorkbenchActivity{
 		Executor: executor,
 	}
 
-	cw := worker.New(c, workflow.CreateWorkspaceTaskQueue, worker.Options{
+	cw := worker.New(c, workflow.CreateWorkbenchTaskQueue, worker.Options{
 		WorkerStopTimeout:         20 * time.Second,
 		BackgroundActivityContext: ctx,
 	})
-	cw.RegisterWorkflow(workflow.CreateWorkspace)
+	cw.RegisterWorkflow(workflow.CreateWorkbench)
 	cw.RegisterActivity(wa)
 
-	dw := worker.New(c, workflow.DeleteWorkspaceTaskQueue, worker.Options{
+	dw := worker.New(c, workflow.DeleteWorkbenchTaskQueue, worker.Options{
 		WorkerStopTimeout:         20 * time.Second,
 		BackgroundActivityContext: ctx,
 	})
-	dw.RegisterWorkflow(workflow.DeleteWorkspace)
+	dw.RegisterWorkflow(workflow.DeleteWorkbench)
 	dw.RegisterActivity(wa)
 
-	tw := worker.New(c, workflow.StartWorkspaceTaskQueue, worker.Options{
+	tw := worker.New(c, workflow.StartWorkbenchTaskQueue, worker.Options{
 		WorkerStopTimeout:         20 * time.Second,
 		BackgroundActivityContext: ctx,
 	})
-	tw.RegisterWorkflow(workflow.StartWorkspace)
+	tw.RegisterWorkflow(workflow.StartWorkbench)
 	tw.RegisterActivity(wa)
 
-	sw := worker.New(c, workflow.StopWorkspaceTaskQueue, worker.Options{
+	sw := worker.New(c, workflow.StopWorkbenchTaskQueue, worker.Options{
 		WorkerStopTimeout:         20 * time.Second,
 		BackgroundActivityContext: ctx,
 	})
-	sw.RegisterWorkflow(workflow.StopWorkspace)
+	sw.RegisterWorkflow(workflow.StopWorkbench)
 	sw.RegisterActivity(wa)
 
 	wg := sync.WaitGroup{}
@@ -117,29 +115,4 @@ func workerRun(cmd *cobra.Command, args []string) {
 
 	wg.Wait()
 	logger.Info("Successfully stop worker process!")
-}
-
-func newPrometheusScope(c prometheus.Configuration) tally.Scope {
-	reporter, err := c.NewReporter(
-		prometheus.ConfigurationOptions{
-			Registry: prom.NewRegistry(),
-			OnError: func(err error) {
-				log.Println("error in prometheus reporter", err)
-			},
-		},
-	)
-	if err != nil {
-		log.Fatalln("error creating prometheus reporter", err)
-	}
-	scopeOpts := tally.ScopeOptions{
-		CachedReporter:  reporter,
-		Separator:       prometheus.DefaultSeparator,
-		SanitizeOptions: &sdktally.PrometheusSanitizeOptions,
-		Prefix:          "wbtemporal",
-	}
-	scope, _ := tally.NewRootScope(scopeOpts, time.Second)
-	scope = sdktally.NewPrometheusNamingScope(scope)
-
-	log.Println("prometheus metrics scope created")
-	return scope
 }

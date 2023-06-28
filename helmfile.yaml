@@ -1,0 +1,28 @@
+environments:
+  local:
+    values:
+    - env: local
+  gke:
+    values:
+    - env: gke
+---
+helmDefaults:
+  skipDeps: true
+
+repositories:
+- name: jupyterhub
+  url: https://jupyterhub.github.io/helm-chart/
+
+releases:
+- name: jupyterhub
+  namespace: default
+  chart: jupyterhub/jupyterhub
+  version: 3.0.0-beta.1
+  # 環境毎のベースの values ファイルにクラスタ毎の values ファイルをマージして上書き可能にしている
+  values:
+  - install/helm/jupyterhub/values.{{ .Values.env }}.yaml
+  # クラスタ単位で上書きする場合、values ファイルを以下の命名規則で配置すること
+  - install/helm/jupyterhub/{{`{{ .Release.KubeContext }}`}}/{{`{{ .Release.Name }}`}}.{{`{{ .Release.Namespace }}`}}.yaml
+  # 2 つの values ファイルの片方もしくはどちらも使用しない場合があるので、
+  # ファイルがなくてもエラー終了しないように Warn を指定
+  missingFileHandler: Warn

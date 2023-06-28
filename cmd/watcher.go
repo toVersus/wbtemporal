@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 
-	"github.com/toVersus/wbtemporal/pkg/executor"
 	"github.com/toVersus/wbtemporal/pkg/logger"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/serviceerror"
@@ -15,7 +14,7 @@ type workflowWatcher struct {
 	id string
 }
 
-func (w *workflowWatcher) run(ctx context.Context, options *executor.WorkspaceOption) {
+func (w *workflowWatcher) run(ctx context.Context) {
 	logger := logger.NewDefaultLogger(logLevel)
 
 	workflowId := w.id

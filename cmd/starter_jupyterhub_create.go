@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/toVersus/wbtemporal/pkg/executor"
+	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 	"github.com/toVersus/wbtemporal/pkg/logger"
 	"github.com/toVersus/wbtemporal/pkg/workflow"
 	"go.temporal.io/sdk/client"
@@ -16,14 +16,14 @@ import (
 )
 
 var (
-	starterCreateCmd = &cobra.Command{
+	starterJupyterHubCreateCmd = &cobra.Command{
 		Use:   "create",
-		Short: "Trigger Temporal workflow to create Workspace instance",
-		Run:   starterCreate,
+		Short: "Trigger Temporal workflow to create JupyterHub user server",
+		Run:   starterJupyterHubCreate,
 	}
 )
 
-func starterCreate(cmd *cobra.Command, args []string) {
+func starterJupyterHubCreate(cmd *cobra.Command, args []string) {
 	logger := logger.NewDefaultLogger(logLevel)
 
 	logger.Debug(fmt.Sprintf("Trying to connect to temporal frontend: %s", frontendAddr))
@@ -41,33 +41,25 @@ func starterCreate(cmd *cobra.Command, args []string) {
 	ctx, shutdown := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer shutdown()
 
-	options := &executor.WorkspaceOption{
-		Name:  name,
-		Email: email,
-		GoogleAPIOption: &executor.GoogleAPIOption{
-			Location:    location,
-			Zone:        zone,
-			ProjectId:   projectID,
-			MachineType: machineType,
-			Network:     network,
-			Subnet:      subnet,
-		},
+	options := &jupyterhubapi.Option{
+		Server: jupyterHubServer,
+		User:   jupyterHubUser,
 	}
-	workflowID := fmt.Sprintf("%s-create", name)
-	logger.Info("Trigger workflow to create new workspace instance")
+	workflowID := fmt.Sprintf("%s-%s-create", jupyterHubUser, jupyterHubServer)
+	logger.Info("Trigger workflow to create new JupyterHub user server")
 	run, err := c.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:        workflowID,
-		TaskQueue: workflow.CreateWorkspaceTaskQueue,
+		TaskQueue: workflow.CreateJupyterHubTaskQueue,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Minute,
 			MaximumAttempts: 3,
 		},
-	}, workflow.CreateWorkspace, options)
+	}, workflow.CreateUserServer, options)
 	if err != nil {
-		logger.Fatal("Could not trigger create workspace workflow", "Error", err)
+		logger.Fatal("Could not trigger create JupyterHub user server workflow", "Error", err)
 	}
 	if !wait {
-		logger.Info("Successfully triggered create workspace workflow!")
+		logger.Info("Successfully triggered create workflow for JupyterHub user server!")
 		return
 	}
 
@@ -75,14 +67,14 @@ func starterCreate(cmd *cobra.Command, args []string) {
 		// Poll and print workflow status using separate goroutine
 		watcher := &workflowWatcher{c: c, id: workflowID}
 		logger.Info("Start workflow watcher")
-		watcher.run(ctx, options)
+		watcher.run(ctx)
 	}
 
-	var status executor.WorkspaceStatus
+	var status jupyterhubapi.Status
 	if err := run.Get(ctx, &status); err != nil {
-		logger.Fatal("Could not complete create workspace workflow", "Error", err)
+		logger.Fatal("Could not complete create workflow for JupyterHub user server", "Error", err)
 	}
-	logger.Info("Workspace workflow completed successfully", "name", status.Name, "url", status.URL, "status", status.Status)
+	logger.Info("Create workflow for JupyterHub user server completed successfully", "name", status.Name, "url", status.URL, "status", status.Status)
 	// Just to be sure, sleep 3 seconds before exiting
 	time.Sleep(3 * time.Second)
 }

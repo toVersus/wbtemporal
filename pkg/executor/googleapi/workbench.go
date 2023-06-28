@@ -7,19 +7,17 @@ import (
 	"cloud.google.com/go/longrunning/autogen/longrunningpb"
 	notebooks "cloud.google.com/go/notebooks/apiv1"
 	"cloud.google.com/go/notebooks/apiv1/notebookspb"
-	"github.com/toVersus/wbtemporal/pkg/executor"
 )
 
 var (
-	_ executor.NotebookService             = &workbench{}
-	_ executor.LongRunningOperationService = &workbench{}
+	_ NotebookService = &workbench{}
 )
 
 type workbench struct {
 	notebookClient *notebooks.NotebookClient
 }
 
-func NewWorkbench(ctx context.Context) (executor.Executor, error) {
+func NewWorkbench(ctx context.Context) (Executor, error) {
 	notebookClient, err := notebooks.NewNotebookClient(ctx)
 	if err != nil {
 		return &workbench{}, fmt.Errorf("failed to initialize compute service: %s", err)
@@ -30,9 +28,9 @@ func NewWorkbench(ctx context.Context) (executor.Executor, error) {
 	}, nil
 }
 
-func (w *workbench) CreateNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
+func (w *workbench) CreateNotebookInstance(ctx context.Context, option *Option) (string, error) {
 	req := &notebookspb.CreateInstanceRequest{
-		Parent:     fmt.Sprintf("projects/%s/locations/%s", option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone),
+		Parent:     fmt.Sprintf("projects/%s/locations/%s", option.ProjectId, option.Zone),
 		InstanceId: option.Name,
 		Instance: &notebookspb.Instance{
 			Environment: &notebookspb.Instance_VmImage{
@@ -48,10 +46,10 @@ func (w *workbench) CreateNotebookInstance(ctx context.Context, option *executor
 			BootDiskSizeGb: 50,
 			DataDiskType:   notebookspb.Instance_PD_BALANCED,
 			DataDiskSizeGb: 20,
-			Network:        fmt.Sprintf("projects/%s/global/networks/%s", option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Network),
-			Subnet:         fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Location, option.GoogleAPIOption.Subnet),
+			Network:        fmt.Sprintf("projects/%s/global/networks/%s", option.ProjectId, option.Network),
+			Subnet:         fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", option.ProjectId, option.Location, option.Subnet),
 			InstanceOwners: []string{option.Email},
-			MachineType:    option.GoogleAPIOption.MachineType,
+			MachineType:    option.MachineType,
 		},
 	}
 	op, err := w.notebookClient.CreateInstance(ctx, req)
@@ -61,24 +59,24 @@ func (w *workbench) CreateNotebookInstance(ctx context.Context, option *executor
 	return op.Name(), nil
 }
 
-func (w *workbench) DescribeNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (*executor.WorkspaceStatus, error) {
+func (w *workbench) DescribeNotebookInstance(ctx context.Context, option *Option) (*Status, error) {
 	req := &notebookspb.GetInstanceRequest{
-		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
+		Name: notebookInstanceFullname(option.ProjectId, option.Zone, option.Name),
 	}
 	wb, err := w.notebookClient.GetInstance(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return &executor.WorkspaceStatus{
+	return &Status{
 		Name:   wb.Name,
 		URL:    wb.ProxyUri,
 		Status: wb.State.String(),
 	}, nil
 }
 
-func (w *workbench) StartNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
+func (w *workbench) StartNotebookInstance(ctx context.Context, option *Option) (string, error) {
 	op, err := w.notebookClient.StartInstance(ctx, &notebookspb.StartInstanceRequest{
-		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
+		Name: notebookInstanceFullname(option.ProjectId, option.Zone, option.Name),
 	})
 	if err != nil {
 		return "", err
@@ -86,9 +84,9 @@ func (w *workbench) StartNotebookInstance(ctx context.Context, option *executor.
 	return op.Name(), nil
 }
 
-func (w *workbench) StopNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
+func (w *workbench) StopNotebookInstance(ctx context.Context, option *Option) (string, error) {
 	op, err := w.notebookClient.StopInstance(ctx, &notebookspb.StopInstanceRequest{
-		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
+		Name: notebookInstanceFullname(option.ProjectId, option.Zone, option.Name),
 	})
 	if err != nil {
 		return "", err
@@ -96,9 +94,9 @@ func (w *workbench) StopNotebookInstance(ctx context.Context, option *executor.W
 	return op.Name(), nil
 }
 
-func (w *workbench) DeleteNotebookInstance(ctx context.Context, option *executor.WorkspaceOption) (string, error) {
+func (w *workbench) DeleteNotebookInstance(ctx context.Context, option *Option) (string, error) {
 	op, err := w.notebookClient.DeleteInstance(ctx, &notebookspb.DeleteInstanceRequest{
-		Name: notebookInstanceFullname(option.GoogleAPIOption.ProjectId, option.GoogleAPIOption.Zone, option.Name),
+		Name: notebookInstanceFullname(option.ProjectId, option.Zone, option.Name),
 	})
 	if err != nil {
 		return "", err
@@ -106,15 +104,15 @@ func (w *workbench) DeleteNotebookInstance(ctx context.Context, option *executor
 	return op.Name(), nil
 }
 
-func (w workbench) HasOperationDone(ctx context.Context, name string) (bool, error) {
+func (w workbench) HasOperationDone(ctx context.Context, opName string) (bool, error) {
 	op, err := w.notebookClient.GetOperation(ctx, &longrunningpb.GetOperationRequest{
-		Name: name,
+		Name: opName,
 	})
 	if err != nil {
-		return false, fmt.Errorf("failed to get notebook operation %q: %w", name, err)
+		return false, fmt.Errorf("failed to get notebook operation %q: %w", opName, err)
 	}
 	if op.GetError() != nil {
-		return false, fmt.Errorf("notebook operation %q aborted: %s", name, op.GetError().GetMessage())
+		return false, fmt.Errorf("notebook operation %q aborted: %s", opName, op.GetError().GetMessage())
 	}
 	if !op.GetDone() {
 		return false, nil

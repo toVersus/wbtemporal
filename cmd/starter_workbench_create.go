@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/toVersus/wbtemporal/pkg/executor"
+	"github.com/toVersus/wbtemporal/pkg/executor/googleapi"
 	"github.com/toVersus/wbtemporal/pkg/logger"
 	"github.com/toVersus/wbtemporal/pkg/workflow"
 	"go.temporal.io/sdk/client"
@@ -16,14 +16,14 @@ import (
 )
 
 var (
-	starterStopCmd = &cobra.Command{
-		Use:   "stop",
-		Short: "Trigger Temporal workflow to stop Workspace instance",
-		Run:   starterStop,
+	starterWorkbenchCreateCmd = &cobra.Command{
+		Use:   "create",
+		Short: "Trigger Temporal workflow to create Workspace instance",
+		Run:   starterWorkbenchCreate,
 	}
 )
 
-func starterStop(cmd *cobra.Command, args []string) {
+func starterWorkbenchCreate(cmd *cobra.Command, args []string) {
 	logger := logger.NewDefaultLogger(logLevel)
 
 	logger.Debug(fmt.Sprintf("Trying to connect to temporal frontend: %s", frontendAddr))
@@ -41,29 +41,31 @@ func starterStop(cmd *cobra.Command, args []string) {
 	ctx, shutdown := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer shutdown()
 
-	options := &executor.WorkspaceOption{
-		Name: name,
-		GoogleAPIOption: &executor.GoogleAPIOption{
-			Location:  location,
-			Zone:      zone,
-			ProjectId: projectID,
-		},
+	options := &googleapi.Option{
+		Name:        name,
+		Email:       email,
+		Location:    location,
+		Zone:        zone,
+		ProjectId:   projectID,
+		MachineType: machineType,
+		Network:     network,
+		Subnet:      subnet,
 	}
-	workflowID := fmt.Sprintf("%s-stop", name)
-	logger.Info("Trigger workflow to stop workspace instance")
+	workflowID := fmt.Sprintf("%s-create", name)
+	logger.Info("Trigger workflow to create new workspace instance")
 	run, err := c.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:        workflowID,
-		TaskQueue: workflow.StopWorkspaceTaskQueue,
+		TaskQueue: workflow.CreateWorkbenchTaskQueue,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Minute,
 			MaximumAttempts: 3,
 		},
-	}, workflow.StopWorkspace, options)
+	}, workflow.CreateWorkbench, options)
 	if err != nil {
-		logger.Fatal("Could not trigger stop workspace workflow", "Error", err)
+		logger.Fatal("Could not trigger create workspace workflow", "Error", err)
 	}
 	if !wait {
-		logger.Info("Successfully triggered stop workspace workflow!")
+		logger.Info("Successfully triggered create workspace workflow!")
 		return
 	}
 
@@ -71,14 +73,14 @@ func starterStop(cmd *cobra.Command, args []string) {
 		// Poll and print workflow status using separate goroutine
 		watcher := &workflowWatcher{c: c, id: workflowID}
 		logger.Info("Start workflow watcher")
-		watcher.run(ctx, options)
+		watcher.run(ctx)
 	}
 
-	var status executor.WorkspaceStatus
+	var status googleapi.Status
 	if err := run.Get(ctx, &status); err != nil {
-		logger.Fatal("Could not complete stop workspace workflow", "Error", err)
+		logger.Fatal("Could not complete create workspace workflow", "Error", err)
 	}
-	logger.Info("Successfully complte stop workspace workflow!")
+	logger.Info("Workspace workflow completed successfully", "name", status.Name, "url", status.URL, "status", status.Status)
 	// Just to be sure, sleep 3 seconds before exiting
 	time.Sleep(3 * time.Second)
 }

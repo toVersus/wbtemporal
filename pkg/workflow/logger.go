@@ -1,15 +1,23 @@
 package workflow
 
 import (
-	"github.com/toVersus/wbtemporal/pkg/executor"
+	"github.com/toVersus/wbtemporal/pkg/executor/googleapi"
+	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 )
 
-func defaultGoogleAPIWorkflowLogger(ctx workflow.Context, workspace *executor.WorkspaceOption) log.Logger {
+func defaultGoogleAPIWorkflowLogger(ctx workflow.Context, option *googleapi.Option) log.Logger {
 	return log.With(workflow.GetLogger(ctx),
-		"ProjectID", workspace.GoogleAPIOption.ProjectId,
-		"ClusterName", workspace.Name,
-		"ClusterLocation", workspace.GoogleAPIOption.Location,
+		"ProjectID", option.ProjectId,
+		"ClusterName", option.Name,
+		"ClusterLocation", option.Location,
+	)
+}
+
+func defaultJupyterHubWorkflowLogger(ctx workflow.Context, option *jupyterhubapi.Option) log.Logger {
+	return log.With(workflow.GetLogger(ctx),
+		"User", option.User,
+		"Server", option.Server,
 	)
 }

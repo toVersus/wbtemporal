@@ -1,0 +1,39 @@
+hub:
+  config:
+    JupyterHub:
+      admin_access: true
+      authenticator_class: dummy
+  # https://jupyterhub.readthedocs.io/en/stable/howto/rest.html#enabling-users-to-spawn-multiple-named-servers-via-the-api
+  allowNamedServers: true
+  # https://github.com/consideRatio/zero-to-jupyterhub-k8s/blob/f0db224c715b70b995a74b323304e713d8eeda52/dev-config.yaml#L37-L48
+  services:
+    wbtemporal:
+      admin: true
+      apiToken: 1f99ea00741c9e31320259b7f4de5fd762f96008e538157b7f2beea140a3a6eb
+  networkPolicy:
+    enabled: false
+
+proxy:
+  chp:
+    networkPolicy:
+      enabled: false
+  service:
+    type: LoadBalancer
+    annotations:
+      metallb.universe.tf/loadBalancerIPs: "198.19.195.240"
+
+singleuser:
+  networkPolicy:
+    enabled: false
+  cloudMetadata:
+    # block set to true will append a privileged initContainer using the
+    # iptables to block the sensitive metadata server at the provided ip.
+    #
+    # GCS FUSE CSI driver が Workload Identity で必要な権限を取得できなくなるので、
+    # blockWithIptables は無効化すること
+    blockWithIptables: false
+
+# GKE の ClusterAutoscaler で optimize-utilization を指定しているので不要
+scheduling:
+  userScheduler:
+    enabled: false

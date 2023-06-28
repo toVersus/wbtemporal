@@ -6,7 +6,6 @@ import (
 
 var (
 	starterCmd = &cobra.Command{
-		Use:   "starter",
-		Short: "Trigegr Temporal workflow to manage Workspace instances",
+		Use: "starter",
 	}
 )

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/toVersus/wbtemporal/pkg/executor"
+	"github.com/toVersus/wbtemporal/pkg/executor/googleapi"
 	"github.com/toVersus/wbtemporal/pkg/logger"
 	"github.com/toVersus/wbtemporal/pkg/workflow"
 	"go.temporal.io/sdk/client"
@@ -16,14 +16,14 @@ import (
 )
 
 var (
-	starterDeleteCmd = &cobra.Command{
-		Use:   "delete",
-		Short: "Trigger Temporal workflow to delete Workspace instance",
-		Run:   starterDelete,
+	starterWorkbenchStartCmd = &cobra.Command{
+		Use:   "start",
+		Short: "Trigger Temporal workflow to start Workspace instance",
+		Run:   starterWorkbenchStart,
 	}
 )
 
-func starterDelete(cmd *cobra.Command, args []string) {
+func starterWorkbenchStart(cmd *cobra.Command, args []string) {
 	logger := logger.NewDefaultLogger(logLevel)
 
 	logger.Debug(fmt.Sprintf("Trying to connect to temporal frontend: %s", frontendAddr))
@@ -41,29 +41,27 @@ func starterDelete(cmd *cobra.Command, args []string) {
 	ctx, shutdown := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer shutdown()
 
-	options := &executor.WorkspaceOption{
-		Name: name,
-		GoogleAPIOption: &executor.GoogleAPIOption{
-			Location:  location,
-			Zone:      zone,
-			ProjectId: projectID,
-		},
+	options := &googleapi.Option{
+		Name:      name,
+		Location:  location,
+		Zone:      zone,
+		ProjectId: projectID,
 	}
-	workflowID := fmt.Sprintf("%s-delete", name)
-	logger.Info("Trigger workflow to delete workspace instance")
+	workflowID := fmt.Sprintf("%s-start", name)
+	logger.Info("Trigger workflow to start workspace instance")
 	run, err := c.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:        workflowID,
-		TaskQueue: workflow.DeleteWorkspaceTaskQueue,
+		TaskQueue: workflow.StartWorkbenchTaskQueue,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Minute,
 			MaximumAttempts: 3,
 		},
-	}, workflow.DeleteWorkspace, options)
+	}, workflow.StartWorkbench, options)
 	if err != nil {
-		logger.Fatal("Could not trigger delete workspace workflow", "Error", err)
+		logger.Fatal("Could not trigger start workspace workflow", "Error", err)
 	}
 	if !wait {
-		logger.Info("Successfully triggered delete workspace workflow!")
+		logger.Info("Successfully triggered start workspace workflow!")
 		return
 	}
 
@@ -71,14 +69,14 @@ func starterDelete(cmd *cobra.Command, args []string) {
 		// Poll and print workflow status using separate goroutine
 		watcher := &workflowWatcher{c: c, id: workflowID}
 		logger.Info("Start workflow watcher")
-		watcher.run(ctx, options)
+		watcher.run(ctx)
 	}
 
-	var status executor.WorkspaceStatus
+	var status googleapi.Status
 	if err := run.Get(ctx, &status); err != nil {
-		logger.Fatal("Could not complete delete workspace workflow", "Error", err)
+		logger.Fatal("Could not complete start workspace workflow", "Error", err)
 	}
-	logger.Info("Successfully complte delete workspace workflow!")
+	logger.Info("Successfully complte start workspace workflow!")
 	// Just to be sure, sleep 3 seconds before exiting
 	time.Sleep(3 * time.Second)
 }

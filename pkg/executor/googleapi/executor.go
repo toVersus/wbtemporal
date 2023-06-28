@@ -1,4 +1,4 @@
-package executor
+package googleapi
 
 import (
 	"context"
@@ -14,17 +14,11 @@ var (
 	ErrNotFoundExecutor = fmt.Errorf("executor not found")
 )
 
-type WorkspaceOption struct {
+type Option struct {
 	// Name indicates the workspace name
 	Name string
 	// Email indicates the workspace owner email
 	Email string
-
-	// GoogleAPIOption indicates the Google Cloud API option
-	GoogleAPIOption *GoogleAPIOption
-}
-
-type GoogleAPIOption struct {
 	// Region indicates the network region
 	Zone string
 	// Location indicates the workspace location or zone
@@ -42,7 +36,7 @@ type GoogleAPIOption struct {
 	Subnet string
 }
 
-type WorkspaceStatus struct {
+type Status struct {
 	Name   string
 	URL    string
 	Status string
@@ -50,21 +44,18 @@ type WorkspaceStatus struct {
 
 // NotebookService is an interface for interacting with Google Cloud Notebooks API
 type NotebookService interface {
-	CreateNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
-	DescribeNotebookInstance(ctx context.Context, option *WorkspaceOption) (*WorkspaceStatus, error)
-	StartNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
-	StopNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
-	DeleteNotebookInstance(ctx context.Context, option *WorkspaceOption) (string, error)
+	CreateNotebookInstance(ctx context.Context, option *Option) (string, error)
+	DescribeNotebookInstance(ctx context.Context, option *Option) (*Status, error)
+	StartNotebookInstance(ctx context.Context, option *Option) (string, error)
+	StopNotebookInstance(ctx context.Context, option *Option) (string, error)
+	DeleteNotebookInstance(ctx context.Context, option *Option) (string, error)
 }
 
 type LongRunningOperationService interface {
-	HasOperationDone(ctx context.Context, name string) (bool, error)
+	HasOperationDone(ctx context.Context, opName string) (bool, error)
 }
 
-// Executor defines an interface to interact with Google Cloud API
 type Executor interface {
 	NotebookService
 	LongRunningOperationService
 }
-
-type CreateNotebookInstanceOption struct{}
