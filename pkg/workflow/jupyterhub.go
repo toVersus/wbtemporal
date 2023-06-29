@@ -8,7 +8,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"github.com/toVersus/wbtemporal/pkg/activity"
-	api "github.com/toVersus/wbtemporal/pkg/api/jupyterhub"
+	"github.com/toVersus/wbtemporal/pkg/client/jupyterhub"
 	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 )
 
@@ -36,7 +36,7 @@ func CreateUserServer(ctx workflow.Context, option *jupyterhubapi.Option) (*jupy
 	})
 
 	logger.Info("Creating user unless it already exists")
-	var user api.User
+	var user jupyterhub.User
 	if err := workflow.ExecuteActivity(ctx, wa.GetOrCreateUser, option).Get(ctx, &user); err != nil {
 		return nil, fmt.Errorf("failed to get or create user: %w", err)
 	}
@@ -90,7 +90,7 @@ func DeleteUserServer(ctx workflow.Context, option *jupyterhubapi.Option) error 
 	})
 
 	logger.Info("Creating user unless it already exists")
-	var user api.User
+	var user jupyterhub.User
 	if err := workflow.ExecuteActivity(ctx, wa.GetOrCreateUser, option).Get(ctx, &user); err != nil {
 		return fmt.Errorf("failed to get or create user: %w", err)
 	}

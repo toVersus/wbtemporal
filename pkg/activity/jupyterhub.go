@@ -6,7 +6,7 @@ import (
 
 	"go.temporal.io/sdk/temporal"
 
-	api "github.com/toVersus/wbtemporal/pkg/api/jupyterhub"
+	"github.com/toVersus/wbtemporal/pkg/client/jupyterhub"
 	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 )
 
@@ -18,7 +18,7 @@ type JupyterHubActivity struct {
 	Executor jupyterhubapi.Executor
 }
 
-func (a *JupyterHubActivity) GetOrCreateUser(ctx context.Context, option *jupyterhubapi.Option) (*api.User, error) {
+func (a *JupyterHubActivity) GetOrCreateUser(ctx context.Context, option *jupyterhubapi.Option) (*jupyterhub.User, error) {
 	user, err := a.Executor.GetUser(ctx, option)
 	if err == jupyterhubapi.ErrUserNotFound {
 		user, err = a.Executor.CreateUser(ctx, option)

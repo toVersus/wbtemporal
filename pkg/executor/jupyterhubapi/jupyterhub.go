@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
-	api "github.com/toVersus/wbtemporal/pkg/api/jupyterhub"
+	"github.com/toVersus/wbtemporal/pkg/client/jupyterhub"
 )
 
 const (
@@ -24,7 +24,7 @@ var (
 )
 
 type notebook struct {
-	*api.Client
+	*jupyterhub.Client
 	baseURL    string
 	apiBaseURL string
 }
@@ -35,7 +35,7 @@ func NewExecutor(ctx context.Context, baseURL, token string) (Executor, error) {
 		return nil, fmt.Errorf("failed to generate JupyterHub API base URL: %v", err)
 	}
 
-	client, err := api.NewClient(apiBaseURL, api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+	client, err := jupyterhub.NewClient(apiBaseURL, jupyterhub.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 		return nil
 	}))
@@ -46,7 +46,7 @@ func NewExecutor(ctx context.Context, baseURL, token string) (Executor, error) {
 	return &notebook{Client: client, baseURL: baseURL, apiBaseURL: apiBaseURL}, nil
 }
 
-func (n *notebook) GetUser(ctx context.Context, option *Option) (*api.User, error) {
+func (n *notebook) GetUser(ctx context.Context, option *Option) (*jupyterhub.User, error) {
 	resp, err := n.GetUsersName(ctx, option.User)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %v", err)
@@ -62,14 +62,14 @@ func (n *notebook) GetUser(ctx context.Context, option *Option) (*api.User, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
-	var user api.User
+	var user jupyterhub.User
 	if err := json.Unmarshal(result, &user); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
 	}
 	return &user, nil
 }
 
-func (n *notebook) CreateUser(ctx context.Context, option *Option) (*api.User, error) {
+func (n *notebook) CreateUser(ctx context.Context, option *Option) (*jupyterhub.User, error) {
 	resp, err := n.PostUsersName(ctx, option.User)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %v", err)
@@ -82,7 +82,7 @@ func (n *notebook) CreateUser(ctx context.Context, option *Option) (*api.User, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
-	var user api.User
+	var user jupyterhub.User
 	if err := json.Unmarshal(result, &user); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
 	}
@@ -102,7 +102,7 @@ func (n *notebook) GetUserServer(ctx context.Context, option *Option) (*Status, 
 		var status string
 		if *server.Ready {
 			status = UserServerStatusReady
-		} else if *server.Pending == api.ServerPendingSpawn || *server.Pending == api.ServerPendingStop {
+		} else if *server.Pending == jupyterhub.ServerPendingSpawn || *server.Pending == jupyterhub.ServerPendingStop {
 			status = UserServerStatusPending
 		} else if *server.Stopped {
 			status = UserServerStatusStopped
