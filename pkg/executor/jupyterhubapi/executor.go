@@ -3,6 +3,8 @@ package jupyterhubapi
 import (
 	"context"
 	"fmt"
+
+	api "github.com/toVersus/wbtemporal/pkg/api/jupyterhub"
 )
 
 const (
@@ -29,7 +31,9 @@ type Status struct {
 
 // NotebookService is an interface for interacting with Google Cloud Notebooks API
 type NotebookService interface {
-	DescribeUserServer(ctx context.Context, option *Option) (*Status, error)
+	GetUser(ctx context.Context, option *Option) (*api.User, error)
+	CreateUser(ctx context.Context, option *Option) (*api.User, error)
+	GetUserServer(ctx context.Context, option *Option) (*Status, error)
 	CreateUserServer(ctx context.Context, option *Option) error
 	DeleteUserServer(ctx context.Context, option *Option) error
 	IsUserServerReady(ctx context.Context, option *Option) (bool, error)

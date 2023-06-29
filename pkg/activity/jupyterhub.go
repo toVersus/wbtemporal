@@ -3,10 +3,11 @@ package activity
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 	"go.temporal.io/sdk/temporal"
+
+	api "github.com/toVersus/wbtemporal/pkg/api/jupyterhub"
+	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 )
 
 const (
@@ -17,18 +18,30 @@ type JupyterHubActivity struct {
 	Executor jupyterhubapi.Executor
 }
 
-func (a *JupyterHubActivity) Exist(ctx context.Context, option *jupyterhubapi.Option) (bool, error) {
-	_, err := a.Executor.DescribeUserServer(ctx, option)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return false, nil
+func (a *JupyterHubActivity) GetOrCreateUser(ctx context.Context, option *jupyterhubapi.Option) (*api.User, error) {
+	user, err := a.Executor.GetUser(ctx, option)
+	if err == jupyterhubapi.ErrUserNotFound {
+		user, err = a.Executor.CreateUser(ctx, option)
+		if err != nil {
+			return nil, err
 		}
-		return false, err
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
-	return true, nil
+	return user, nil
 }
 
-func (a *JupyterHubActivity) Create(ctx context.Context, option *jupyterhubapi.Option) error {
+func (a *JupyterHubActivity) ExistUserServer(ctx context.Context, option *jupyterhubapi.Option) (bool, error) {
+	server, err := a.Executor.GetUserServer(ctx, option)
+	if err == jupyterhubapi.ErrServerNotFound {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return server.Status == jupyterhubapi.UserServerStatusReady, nil
+}
+
+func (a *JupyterHubActivity) CreateUserServer(ctx context.Context, option *jupyterhubapi.Option) error {
 	err := a.Executor.CreateUserServer(ctx, option)
 	if err != nil {
 		return err
@@ -36,7 +49,7 @@ func (a *JupyterHubActivity) Create(ctx context.Context, option *jupyterhubapi.O
 	return nil
 }
 
-func (a *JupyterHubActivity) Delete(ctx context.Context, option *jupyterhubapi.Option) error {
+func (a *JupyterHubActivity) DeleteUserServer(ctx context.Context, option *jupyterhubapi.Option) error {
 	err := a.Executor.DeleteUserServer(ctx, option)
 	if err != nil {
 		return err
@@ -44,15 +57,15 @@ func (a *JupyterHubActivity) Delete(ctx context.Context, option *jupyterhubapi.O
 	return nil
 }
 
-func (a *JupyterHubActivity) GetAccessURL(ctx context.Context, option *jupyterhubapi.Option) (*jupyterhubapi.Status, error) {
-	result, err := a.Executor.DescribeUserServer(ctx, option)
+func (a *JupyterHubActivity) GetUserServer(ctx context.Context, option *jupyterhubapi.Option) (*jupyterhubapi.Status, error) {
+	server, err := a.Executor.GetUserServer(ctx, option)
 	if err != nil {
 		return nil, err
 	}
-	return result, nil
+	return server, nil
 }
 
-func (a *JupyterHubActivity) WaitReady(ctx context.Context, option *jupyterhubapi.Option) error {
+func (a *JupyterHubActivity) WaitUserServerReady(ctx context.Context, option *jupyterhubapi.Option) error {
 	ready, err := a.Executor.IsUserServerReady(ctx, option)
 	if err != nil {
 		return temporal.NewNonRetryableApplicationError("non-retryable error found in waiting to become ready", ErrOperationFailed, err)
@@ -63,7 +76,7 @@ func (a *JupyterHubActivity) WaitReady(ctx context.Context, option *jupyterhubap
 	return nil
 }
 
-func (a *JupyterHubActivity) WaitDeleted(ctx context.Context, option *jupyterhubapi.Option) error {
+func (a *JupyterHubActivity) WaitUserServerDeleted(ctx context.Context, option *jupyterhubapi.Option) error {
 	ready, err := a.Executor.IsUserServerDeleted(ctx, option)
 	if err != nil {
 		return temporal.NewNonRetryableApplicationError("non-retryable error found in waiting to be deleted", ErrOperationFailed, err)

@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/toVersus/wbtemporal/pkg/activity"
-	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+
+	"github.com/toVersus/wbtemporal/pkg/activity"
+	api "github.com/toVersus/wbtemporal/pkg/api/jupyterhub"
+	"github.com/toVersus/wbtemporal/pkg/executor/jupyterhubapi"
 )
 
 const (
@@ -33,30 +35,36 @@ func CreateUserServer(ctx workflow.Context, option *jupyterhubapi.Option) (*jupy
 		},
 	})
 
-	logger.Info("Checking for the existence of user server")
+	logger.Info("Creating user unless it already exists")
+	var user api.User
+	if err := workflow.ExecuteActivity(ctx, wa.GetOrCreateUser, option).Get(ctx, &user); err != nil {
+		return nil, fmt.Errorf("failed to get or create user: %w", err)
+	}
+
+	logger.Info("Checking for the existence and readiness of user server")
 	var exist bool
-	if err := workflow.ExecuteActivity(ctx, wa.Exist, option).Get(ctx, &exist); err != nil {
-		return nil, fmt.Errorf("failed to check for the existence of user server: %w", err)
+	if err := workflow.ExecuteActivity(ctx, wa.ExistUserServer, option).Get(ctx, &exist); err != nil {
+		return nil, fmt.Errorf("failed to check for the existence and readiness of user server: %w", err)
 	}
 
 	if exist {
 		logger.Info("User server already exists")
 	} else {
 		logger.Info("Creating new user server")
-		if err := workflow.ExecuteActivity(ctx, wa.Create, option).Get(ctx, nil); err != nil {
+		if err := workflow.ExecuteActivity(ctx, wa.CreateUserServer, option).Get(ctx, nil); err != nil {
 			return nil, fmt.Errorf("failed to create user server: %w", err)
 		}
 
 		logger.Info("Waiting for user server to become ready")
-		if err := workflow.ExecuteActivity(ctx, wa.WaitReady, option).Get(ctx, nil); err != nil {
-			return nil, fmt.Errorf("failed to watch operation for creation of Notebook instance: %w", err)
+		if err := workflow.ExecuteActivity(ctx, wa.WaitUserServerReady, option).Get(ctx, nil); err != nil {
+			return nil, fmt.Errorf("failed to wait for creation of user server: %w", err)
 		}
 	}
 
 	var status jupyterhubapi.Status
-	logger.Info("Getting access URL for user server")
-	if err := workflow.ExecuteActivity(ctx, wa.GetAccessURL, option).Get(ctx, &status); err != nil {
-		return nil, fmt.Errorf("failed to watch operation to create user server: %w", err)
+	logger.Info("Getting access info for user server")
+	if err := workflow.ExecuteActivity(ctx, wa.GetUserServer, option).Get(ctx, &status); err != nil {
+		return nil, fmt.Errorf("failed to watch operation to get access info for user server: %w", err)
 	}
 
 	logger.Info("User server created successfully!")
@@ -81,9 +89,15 @@ func DeleteUserServer(ctx workflow.Context, option *jupyterhubapi.Option) error 
 		},
 	})
 
-	logger.Info("Checking for the existence of user server")
+	logger.Info("Creating user unless it already exists")
+	var user api.User
+	if err := workflow.ExecuteActivity(ctx, wa.GetOrCreateUser, option).Get(ctx, &user); err != nil {
+		return fmt.Errorf("failed to get or create user: %w", err)
+	}
+
+	logger.Info("Checking for the existence and readiness of user server")
 	var exist bool
-	if err := workflow.ExecuteActivity(ctx, wa.Exist, option).Get(ctx, &exist); err != nil {
+	if err := workflow.ExecuteActivity(ctx, wa.ExistUserServer, option).Get(ctx, &exist); err != nil {
 		logger.Info("User server already not exists")
 		return nil
 	}
@@ -92,13 +106,13 @@ func DeleteUserServer(ctx workflow.Context, option *jupyterhubapi.Option) error 
 	}
 
 	logger.Info("Deleting user server")
-	if err := workflow.ExecuteActivity(ctx, wa.Delete, option).Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(ctx, wa.DeleteUserServer, option).Get(ctx, nil); err != nil {
 		return fmt.Errorf("failed to delete user server: %w", err)
 	}
 
 	logger.Info("Waiting for user server deleted")
-	if err := workflow.ExecuteActivity(ctx, wa.WaitDeleted, option).Get(ctx, nil); err != nil {
-		return fmt.Errorf("failed to watch operation to delete user server: %w", err)
+	if err := workflow.ExecuteActivity(ctx, wa.WaitUserServerDeleted, option).Get(ctx, nil); err != nil {
+		return fmt.Errorf("failed to wait for deletion of user server: %w", err)
 	}
 
 	logger.Info("User server deleted successfully!")

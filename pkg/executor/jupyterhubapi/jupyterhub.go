@@ -3,6 +3,7 @@ package jupyterhubapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +16,11 @@ const (
 	UserServerStatusReady   = "Ready"
 	UserServerStatusPending = "Pending"
 	UserServerStatusStopped = "Stopped"
+)
+
+var (
+	ErrUserNotFound   = errors.New("user not found")
+	ErrServerNotFound = errors.New("server not found")
 )
 
 type notebook struct {
@@ -40,38 +46,51 @@ func NewExecutor(ctx context.Context, baseURL, token string) (Executor, error) {
 	return &notebook{Client: client, baseURL: baseURL, apiBaseURL: apiBaseURL}, nil
 }
 
-func (n *notebook) GetOrCreateUser(ctx context.Context, option *Option) (api.User, error) {
+func (n *notebook) GetUser(ctx context.Context, option *Option) (*api.User, error) {
 	resp, err := n.GetUsersName(ctx, option.User)
 	if err != nil {
-		return api.User{}, fmt.Errorf("failed to get user: %v", err)
+		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		var err error
-		resp, err = n.PostUsersName(ctx, option.User)
-		if err != nil {
-			return api.User{}, fmt.Errorf("failed to create user: %v", err)
-		}
-		if resp.StatusCode > 299 && resp.StatusCode < 200 {
-			return api.User{}, fmt.Errorf("failed to create user: %v", resp.Status)
-		}
+		return nil, ErrUserNotFound
 	} else if resp.StatusCode > 299 && resp.StatusCode < 200 {
-		return api.User{}, fmt.Errorf("failed to get user: %v", resp.Status)
+		return nil, fmt.Errorf("unexpected status code returned from getting user: %s", resp.Status)
 	}
 
 	result, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return api.User{}, fmt.Errorf("failed to read response body: %v", err)
+		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 	var user api.User
 	if err := json.Unmarshal(result, &user); err != nil {
-		return api.User{}, fmt.Errorf("failed to unmarshal response body: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
 	}
-	return user, nil
+	return &user, nil
 }
 
-func (n *notebook) DescribeUserServer(ctx context.Context, option *Option) (*Status, error) {
-	user, err := n.GetOrCreateUser(ctx, option)
+func (n *notebook) CreateUser(ctx context.Context, option *Option) (*api.User, error) {
+	resp, err := n.PostUsersName(ctx, option.User)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user: %v", err)
+	}
+	if resp.StatusCode > 299 && resp.StatusCode < 200 {
+		return nil, fmt.Errorf("unexpected status code returned from creating user: %v", resp.Status)
+	}
+
+	result, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+	var user api.User
+	if err := json.Unmarshal(result, &user); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
+	}
+	return &user, nil
+}
+
+func (n *notebook) GetUserServer(ctx context.Context, option *Option) (*Status, error) {
+	user, err := n.GetUser(ctx, option)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get or create user: %v", err)
 	}
@@ -99,11 +118,11 @@ func (n *notebook) DescribeUserServer(ctx context.Context, option *Option) (*Sta
 			Status: status,
 		}, nil
 	}
-	return nil, fmt.Errorf("server %s not found", option.Server)
+	return nil, ErrServerNotFound
 }
 
 func (n *notebook) CreateUserServer(ctx context.Context, option *Option) error {
-	user, err := n.GetOrCreateUser(ctx, option)
+	user, err := n.GetUser(ctx, option)
 	if err != nil {
 		return err
 	}
@@ -129,7 +148,7 @@ func (n *notebook) CreateUserServer(ctx context.Context, option *Option) error {
 }
 
 func (n *notebook) DeleteUserServer(ctx context.Context, option *Option) error {
-	user, err := n.GetOrCreateUser(ctx, option)
+	user, err := n.GetUser(ctx, option)
 	if err != nil {
 		return err
 	}
@@ -155,7 +174,7 @@ func (n *notebook) DeleteUserServer(ctx context.Context, option *Option) error {
 }
 
 func (n *notebook) IsUserServerReady(ctx context.Context, option *Option) (bool, error) {
-	user, err := n.GetOrCreateUser(ctx, option)
+	user, err := n.GetUser(ctx, option)
 	if err != nil {
 		return false, err
 	}
@@ -170,7 +189,7 @@ func (n *notebook) IsUserServerReady(ctx context.Context, option *Option) (bool,
 }
 
 func (n *notebook) IsUserServerDeleted(ctx context.Context, option *Option) (bool, error) {
-	user, err := n.GetOrCreateUser(ctx, option)
+	user, err := n.GetUser(ctx, option)
 	if err != nil {
 		return false, err
 	}
